@@ -3,8 +3,9 @@ package Plugins::Spotty::Settings::PlayerAuth;
 use strict;
 use base qw(Slim::Web::Settings);
 
+use File::Spec::Functions qw(catfile);
 use HTTP::Status qw(RC_MOVED_TEMPORARILY);
-use JSON::XS qw(encode_json);
+use JSON::XS qw(encode_json decode_json);
 use Proc::Background;
 
 use Slim::Utils::Log;
@@ -17,10 +18,13 @@ use Plugins::Spotty::AccountHelper;
 
 use constant AUTHENTICATE => '__AUTHENTICATE__';
 use constant HELPER_TIMEOUT => 60*15;		# kill the helper application after 15 minutes
+use constant RESTART_DELAY => 30;			# don't restart a failing helper more often than this
 
 my $prefs = preferences('plugin.spotty');
 my $log   = logger('plugin.spotty');
 my $helper;
+my $lastStart = 0;
+my $lastError = '';
 
 sub new {
 	my $class = shift;
@@ -64,6 +68,7 @@ sub handler {
 		$paramRef->{helpers} = $helpers;
 	}
 
+	$paramRef->{deviceAuth}     = Plugins::Spotty::Helper->getCapability('device-auth') ? 1 : 0;
 	$paramRef->{helperPath}     = $helperPath;
 	$paramRef->{helperVersion}  = $helperVersion ? "v$helperVersion" : string('PLUGIN_SPOTTY_HELPER_ERROR');
 
@@ -82,8 +87,17 @@ sub checkCredentials {
 		hasCredentials => Plugins::Spotty::AccountHelper->hasPlayerCredentials()
 	};
 
-	# make sure our authentication helper is running
-	__PACKAGE__->startHelper();
+	if ($result->{hasCredentials}) {
+		__PACKAGE__->shutdownHelper();
+	}
+	else {
+		# make sure our authentication helper is running
+		__PACKAGE__->startHelper();
+
+		if (my $deviceAuth = __PACKAGE__->getDeviceAuth()) {
+			$result->{deviceAuth} = $deviceAuth;
+		}
+	}
 
 	my $content = encode_json($result);
 	$response->header( 'Content-Length' => length($content) );
@@ -100,13 +114,26 @@ sub startHelper {
 	# no need to restart if it's already there
 	return $helper->alive if $helper && $helper->alive;
 
+	# a helper which keeps dying (eg. no network) would otherwise be restarted on every status poll
+	# report success: the helper exists, we're just holding back
+	return 1 if time() - $lastStart < RESTART_DELAY;
+
 	if ( my $helperPath = Plugins::Spotty::Helper->get() ) {
 		if ( !($helper && $helper->alive) ) {
+			$lastStart = time();
+
 			my @helperArgs = (
 				'-c', Plugins::Spotty::AccountHelper->playerAuthFolder(),
 				'-n', sprintf("%s (%s)", Slim::Utils::Strings::string('PLUGIN_SPOTTY_AUTH_NAME'), Slim::Utils::Misc::getLibraryName()),
 				'--authenticate'
 			);
+
+			# log in with a code on spotify.com/pair - doesn't depend on mDNS reaching the user's phone
+			if (Plugins::Spotty::Helper->getCapability('device-auth')) {
+				my $codeFile = $class->deviceAuthFile();
+				unlink $codeFile if -f $codeFile;
+				push @helperArgs, '--enable-device-auth', '--device-auth-file', $codeFile;
+			}
 
 			# always use fallback (if possible), as the user has no way to force this at this point yet if needed
 			if (!Plugins::Spotty::Helper->getCapability('no-ap-port')) {
@@ -143,6 +170,40 @@ sub shutdownHelper {
 		main::INFOLOG && $log->is_info && $log->info("Quitting authentication daemon");
 		$helper->die;
 	}
+
+	my $codeFile = __PACKAGE__->deviceAuthFile();
+	unlink $codeFile if -f $codeFile;
+}
+
+sub deviceAuthFile {
+	return catfile(Plugins::Spotty::AccountHelper->playerAuthFolder(), 'device-auth.json');
+}
+
+# pairing code written by the helper: { userCode, url, verificationUri } or { error }
+sub getDeviceAuth {
+	my $codeFile = __PACKAGE__->deviceAuthFile();
+	return unless -f $codeFile;
+
+	my $data = eval {
+		open(my $fh, '<', $codeFile) or die "$!\n";
+		local $/;
+		my $content = <$fh>;
+		close $fh;
+		decode_json($content);
+	};
+
+	if ($@) {
+		# the helper might be writing the file right now - try again on the next poll
+		main::DEBUGLOG && $log->is_debug && $log->debug("Failed to read device auth file: $@");
+		return;
+	}
+
+	if (ref $data && $data->{error} && $data->{error} ne $lastError) {
+		$log->warn("Device authorization failed: $data->{error}");
+		$lastError = $data->{error};
+	}
+
+	return ref $data eq 'HASH' ? $data : undef;
 }
 
 

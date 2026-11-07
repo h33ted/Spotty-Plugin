@@ -1,0 +1,38 @@
+[%# pairing code login (spotty helper v2.2+) - filled in by the status poll in auth-header.html %]
+[% IF deviceAuth; WRAPPER setting title="PLUGIN_SPOTTY_DEVICE_AUTH" desc="" %]
+	<div id="spottyDeviceAuth">
+		<div style="padding-bottom: 7px;">[% "PLUGIN_SPOTTY_DEVICE_AUTH_DESC" | string %]</div>
+		<div id="spottyDeviceAuthWaiting">[% "PLUGIN_SPOTTY_DEVICE_AUTH_WAITING" | string %]</div>
+		<div id="spottyDeviceAuthCode" style="display: none;">
+			<ol class="spotty">
+				<li>[% "PLUGIN_SPOTTY_DEVICE_AUTH_STEP1" | string %] <a id="spottyDeviceAuthLink" href="https://spotify.com/pair" target="_blank">spotify.com/pair</a></li>
+				<li>[% "PLUGIN_SPOTTY_DEVICE_AUTH_STEP2" | string %]
+					<div id="spottyDeviceAuthUserCode" style="font-size: 200%; font-family: monospace; letter-spacing: 0.2em; padding: 10px 0;"></div>
+				</li>
+				<li>[% "PLUGIN_SPOTTY_DEVICE_AUTH_STEP3" | string %]</li>
+			</ol>
+		</div>
+		<div id="spottyDeviceAuthError" style="display: none; color: red;"></div>
+		<div style="padding-top: 7px;">[% "PLUGIN_SPOTTY_DEVICE_AUTH_OR" | string %]</div>
+	</div>
+	<script type="text/javascript">
+		window.spottyDeviceAuth = function(info) {
+			if (!info) return;
+			var $ = function(id) { return document.getElementById(id); };
+			if (info.userCode) {
+				$('spottyDeviceAuthWaiting').style.display = 'none';
+				$('spottyDeviceAuthError').style.display = 'none';
+				$('spottyDeviceAuthCode').style.display = '';
+				$('spottyDeviceAuthUserCode').textContent = info.userCode;
+				$('spottyDeviceAuthLink').href = info.url || info.verificationUri || 'https://spotify.com/pair';
+				$('spottyDeviceAuthLink').textContent = (info.verificationUri || 'https://spotify.com/pair').replace(/^https?:\/\//, '');
+			}
+			else if (info.error) {
+				$('spottyDeviceAuthWaiting').style.display = 'none';
+				$('spottyDeviceAuthCode').style.display = 'none';
+				$('spottyDeviceAuthError').style.display = '';
+				$('spottyDeviceAuthError').textContent = '[% "PLUGIN_SPOTTY_DEVICE_AUTH_FAILED" | string | replace("'", "\\'") %] ' + info.error;
+			}
+		};
+	</script>
+[% END; END %]

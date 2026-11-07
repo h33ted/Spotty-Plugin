@@ -1,5 +1,7 @@
 [% PROCESS "plugins/Spotty/settings/auth-header.html" %]
 
+[% PROCESS "plugins/Spotty/settings/player-auth-code.html" %]
+
 	[% WRAPPER setting title="PLUGIN_SPOTTY_AUTH" desc="" %]
 		<div style="padding-bottom: 7px;">Um die Squeezebox mit Spotify verwenden zu k&ouml;nnen muss Lyrion Music Server mit Hilfe
 		einer Spotify Anwendung zugelassen werden. Dies kann die Desktop-Anwendung sein, oder auch eine Mobil-App.

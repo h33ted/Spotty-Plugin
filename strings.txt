@@ -83,6 +83,38 @@ PLUGIN_SPOTTY_AUTH_NAME
 	HU	Spotify fiók belépés
 	NL	Spotify Autorisatie
 
+PLUGIN_SPOTTY_DEVICE_AUTH
+	DE	Mit Code anmelden
+	EN	Log in with a code
+
+PLUGIN_SPOTTY_DEVICE_AUTH_DESC
+	DE	Der einfachste Weg: Melde dich auf einem beliebigen Gerät mit Browser an, z.B. deinem Handy. Dafür muss dein Spotify-Client nicht im selben Netzwerk sein.
+	EN	The easiest way: approve Lyrion Music Server from any device with a web browser, eg. your phone. This works even if your Spotify app cannot see the server on the network.
+
+PLUGIN_SPOTTY_DEVICE_AUTH_WAITING
+	DE	Code wird angefordert...
+	EN	Requesting a code from Spotify...
+
+PLUGIN_SPOTTY_DEVICE_AUTH_STEP1
+	DE	Öffne
+	EN	Open
+
+PLUGIN_SPOTTY_DEVICE_AUTH_STEP2
+	DE	Melde dich an und gib diesen Code ein:
+	EN	Log in and enter this code:
+
+PLUGIN_SPOTTY_DEVICE_AUTH_STEP3
+	DE	Bestätige den Zugriff. Diese Seite wird danach automatisch geschlossen.
+	EN	Confirm access. This page will close by itself afterwards.
+
+PLUGIN_SPOTTY_DEVICE_AUTH_FAILED
+	DE	Anmeldung mit Code fehlgeschlagen:
+	EN	Logging in with a code failed:
+
+PLUGIN_SPOTTY_DEVICE_AUTH_OR
+	DE	Alternativ kannst du Spotty auch wie unten beschrieben über die Geräteliste einer Spotify-App autorisieren.
+	EN	Alternatively you can authorize Spotty from the device list of a Spotify app as described below.
+
 PLUGIN_SPOTTY_ADD_PLAYER_ACCOUNT
 	DE	Wiedergabe autorisieren
 	EN	Authorize Playback
