@@ -1,0 +1,73 @@
+name: Release plugin
+
+# Push a tag matching install.xml's version, eg. `git tag v4.63.0 && git push origin v4.63.0`.
+# Builds Spotty-vX.Y.Z.zip, attaches it to a GitHub release and points repo.xml on master at it.
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Check version
+      id: version
+      run: |
+        VERSION=$(sed -n 's:.*<version>\(.*\)</version>.*:\1:p' install.xml)
+        if [ "v$VERSION" != "$GITHUB_REF_NAME" ]; then
+          echo "::error::Tag $GITHUB_REF_NAME does not match install.xml version $VERSION"
+          exit 1
+        fi
+        echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+    - name: Build plugin zip
+      id: zip
+      run: |
+        VERSION=${{ steps.version.outputs.version }}
+        ZIP=Spotty-v$VERSION.zip
+        mkdir -p build/Spotty
+        git archive HEAD | tar -x -C build/Spotty
+        rm -rf build/Spotty/.github build/Spotty/.gitignore build/Spotty/repo.xml
+        cd build
+        zip -qr "../$ZIP" Spotty -x@../exclude.lst
+        cd ..
+        echo "zip=$ZIP" >> "$GITHUB_OUTPUT"
+        echo "sha=$(sha1sum "$ZIP" | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+
+    - name: Create release
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        gh release create "$GITHUB_REF_NAME" "${{ steps.zip.outputs.zip }}" \
+          --title "Spotty $GITHUB_REF_NAME" --generate-notes
+
+    - name: Update repo.xml on master
+      run: |
+        VERSION=${{ steps.version.outputs.version }}
+        URL="https://github.com/$GITHUB_REPOSITORY/releases/download/$GITHUB_REF_NAME/${{ steps.zip.outputs.zip }}"
+        git fetch origin master
+        git checkout -B master origin/master
+        python3 - "$VERSION" "$URL" "${{ steps.zip.outputs.sha }}" <<'PY'
+        import re, sys
+        version, url, sha = sys.argv[1:]
+        with open('repo.xml') as f:
+            xml = f.read()
+        xml = re.sub(r'(<plugin name="Spotty" version=")[^"]*', r'\g<1>' + version, xml)
+        xml = re.sub(r'<url>[^<]*</url>', f'<url>{url}</url>', xml)
+        xml = re.sub(r'<sha>[^<]*</sha>', f'<sha>{sha}</sha>', xml)
+        with open('repo.xml', 'w') as f:
+            f.write(xml)
+        PY
+        git config user.name "github-actions[bot]"
+        git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        git add repo.xml
+        git commit -m "repo.xml: Spotty $VERSION"
+        git push origin master

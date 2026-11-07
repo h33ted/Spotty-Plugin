@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<extensions>
+	<details>
+		<title lang="EN">Spotty (h33ted fork)</title>
+	</details>
+	<plugins>
+		<plugin name="Spotty" version="0.0.0" minTarget="7.7" maxTarget="*">
+			<title lang="EN">Spotty</title>
+			<desc lang="EN">Spotify for Lyrion Music Server. Fork of Michael Herger's Spotty with an up to date librespot helper and login by pairing code.</desc>
+			<creator>Michael Herger, h33ted</creator>
+			<category>musicservices</category>
+			<link>https://github.com/h33ted/Spotty-Plugin</link>
+			<url></url>
+			<sha></sha>
+		</plugin>
+	</plugins>
+</extensions>
